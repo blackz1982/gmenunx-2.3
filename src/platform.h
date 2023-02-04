@@ -25,6 +25,7 @@ enum fwtype {
 	FW_RETROARCADE,
 	FW_OPEN2X,
 	FW_GPH,
+	FW_PAPG2,
 };
 
 class Platform {

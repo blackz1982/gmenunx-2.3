@@ -97,12 +97,17 @@ public:
 		if (w == 320 && h == 480) h = 240;
 
 		if (FILE *f = fopen("/proc/jz/gpio", "r")) {
-			char buf[7];
-			fread(buf, sizeof(char), 7, f);
+			char buf[25];
+			fread(buf, sizeof(char), 25, f);
 			fclose(f);
 			if (!strncmp(buf, "480x272", 7)) {
-				fwtype = FW_RETROARCADE;
-				udc = false;
+				if (strlen(buf) > 19 && !strncmp(&buf[20], "PAPG2", 5)) {
+					fwtype = FW_PAPG2;
+					joystick = false;
+				} else {
+					fwtype = FW_RETROARCADE;
+					udc = false;
+				}
 			} else {
 				joystick = false;
 			}
@@ -202,8 +207,13 @@ public:
 	
 	uint8_t getTVOutStatus() {
 		if (memdev > 0) {
+			// PAPK3 uses D06 and PAP-Gameta-II uses D05 low for TV-Out
+			if (fwtype == FW_PAPG2) {
+				if (mem[PDPIN] >> 5 & 1) return TV_CONNECT;
+			} else {
 			if (fwtype == FW_RETROARCADE && !(mem[PDPIN] >> 6 & 1)) return TV_CONNECT;
 			if (!(mem[PDPIN] >> 25 & 1)) return TV_CONNECT;
+			}
 		}
 		return TV_REMOVE;
 	}
@@ -227,7 +237,11 @@ public:
 				}
 			}
 		}
+		if (fwtype == FW_PAPG2) {
+			if (memdev > 0 && (mem[PEPIN] >> 23 & 1)) return UDC_CONNECT;
+		} else {
 		if (memdev > 0 && (mem[PDPIN] >> 7 & 1)) return UDC_CONNECT;
+		}
 		return UDC_REMOVE;
 	}
 
@@ -248,7 +262,12 @@ public:
 	}
 
 	uint8_t getVolumeMode(uint8_t vol) {
-		if (memdev > 0 && !(mem[PDPIN] >> 6 & 1)) return VOLUME_MODE_PHONES;
+		// PAP Gameta II Plus uses PIN D05 low
+		if (fwtype == FW_PAPG2) {
+			if (memdev > 0 && (mem[PDPIN] >> 5 & 1)) return VOLUME_MODE_PHONES;
+		} else { 
+			if (memdev > 0 && !(mem[PDPIN] >> 6 & 1)) return VOLUME_MODE_PHONES;
+		}
 		return Platform::getVolumeMode(vol);
 	}
 
